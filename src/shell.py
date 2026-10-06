@@ -7,6 +7,7 @@ import sys
 from src.commands import COMMANDS
 from src.errors import CommandError, EmulatorError, ScriptError
 from src.parser import parse
+from src.vfs import Vfs
 
 PROMPT_SUFFIX = "$ "
 ERROR_PREFIX = "ошибка: "
@@ -25,6 +26,13 @@ class Shell:
         self.user = getpass.getuser()
         self.host = socket.gethostname().split(".")[0]
         self.vfs_name = _name_of(vfs_path)
+        self.vfs = Vfs.default(vfs_path)
+
+    def load_vfs(self):
+        """Загрузить VFS из архива в память и сообщить размер."""
+        if self.vfs_path:
+            self.vfs = Vfs.load(self.vfs_path)
+        self.write(DEBUG_PREFIX + "vfs узлов = " + str(self.vfs.root.count()))
 
     def prompt(self):
         """Приглашение к вводу вида user@host:имя_VFS$ ."""

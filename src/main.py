@@ -27,6 +27,7 @@ def main(argv=None):
 
 
 def _start(shell):
+    shell.load_vfs()
     if shell.script_path:
         shell.run_script(shell.script_path)
     shell.run()

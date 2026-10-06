@@ -2,11 +2,14 @@ import io
 import os
 import tempfile
 import unittest
+import zipfile
 
-from src.errors import ExitRequest, ScriptError
+from src.errors import ExitRequest, ScriptError, VfsError
 from src.main import _parse_args
 from src.parser import parse
 from src.shell import Shell
+from src.vfs import Vfs
+from tests.tools import make_vfs
 
 
 def shell_with_output():
@@ -125,6 +128,87 @@ class ScriptTest(unittest.TestCase):
     def test_missing_file_is_reported(self):
         with self.assertRaises(ScriptError):
             self.shell.run_script("nosuch.vsh")
+
+
+class VfsTest(unittest.TestCase):
+    def setUp(self):
+        self.dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.dir.cleanup)
+        make_vfs.build(self.dir.name)
+
+    def path(self, name):
+        return os.path.join(self.dir.name, name + ".zip")
+
+    def test_minimal_vfs(self):
+        self.assertEqual(Vfs.load(self.path("vfs_min")).root.names(), [])
+
+    def test_several_files(self):
+        root = Vfs.load(self.path("vfs_files")).root
+        self.assertEqual(
+            root.names(), ["logo.bin", "notes.txt", "readme.txt"]
+        )
+
+    def test_three_levels(self):
+        root = Vfs.load(self.path("vfs_deep")).root
+        docs = root.children["home"].children["user"].children["docs"]
+        self.assertIn("report.txt", docs.names())
+
+    def test_binary_content(self):
+        root = Vfs.load(self.path("vfs_files")).root
+        self.assertEqual(root.children["logo.bin"].data, bytes(range(16)))
+
+    def test_load_does_not_modify_archive(self):
+        path = self.path("vfs_deep")
+        with open(path, "rb") as stream:
+            before = stream.read()
+        Vfs.load(path)
+        with open(path, "rb") as stream:
+            self.assertEqual(stream.read(), before)
+
+    def test_missing_archive(self):
+        with self.assertRaises(VfsError):
+            Vfs.load(self.path("nosuch"))
+
+    def test_broken_archive(self):
+        path = script_file("не zip")
+        with self.assertRaises(VfsError):
+            Vfs.load(path)
+        os.unlink(path)
+
+    def test_path_traversal_is_rejected(self):
+        path = self.path("evil")
+        with zipfile.ZipFile(path, "w") as archive:
+            archive.writestr("../evil.txt", b"x")
+        with self.assertRaises(VfsError):
+            Vfs.load(path)
+
+    def test_load_reports_node_count(self):
+        shell, stream = shell_with_output()
+        shell.vfs_path = self.path("vfs_deep")
+        shell.load_vfs()
+        self.assertIn("vfs узлов = 10", stream.getvalue())
+
+
+class VfsInitTest(unittest.TestCase):
+    def test_replaces_tree(self):
+        shell, _ = shell_with_output()
+        shell.vfs.root.children.clear()
+        shell.run_line("vfs-init")
+        self.assertEqual(shell.vfs.root.names(), ["home", "tmp"])
+
+    def test_rejects_arguments(self):
+        shell, stream = shell_with_output()
+        shell.run_line("vfs-init a")
+        self.assertIn("не поддерживаются", stream.getvalue())
+
+    def test_rewrites_physical_archive(self):
+        with tempfile.TemporaryDirectory() as directory:
+            make_vfs.build(directory)
+            path = os.path.join(directory, "vfs_deep.zip")
+            shell = Shell(vfs_path=path, output=io.StringIO())
+            shell.load_vfs()
+            shell.run_line("vfs-init")
+            self.assertEqual(Vfs.load(path).root.names(), ["home", "tmp"])
 
 
 if __name__ == "__main__":
