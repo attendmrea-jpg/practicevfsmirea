@@ -12,3 +12,7 @@ class RegistryError(AppError):
 
 class GraphError(AppError):
     pass
+
+
+class OutputError(AppError):
+    pass

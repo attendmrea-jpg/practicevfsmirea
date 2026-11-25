@@ -1,9 +1,10 @@
 import sys
 
 from src import graph as graph_module
+from src import mermaid, svg
 from src.cli import parse_args
 from src.config import build_config, format_config
-from src.errors import AppError, RegistryError
+from src.errors import AppError, OutputError, RegistryError
 from src.package import Package
 from src.registry import CratesIndex
 from src.report import format_cycles, format_graph, format_order
@@ -13,6 +14,10 @@ FAILURE_CODE = 1
 ERROR_PREFIX = "ошибка: "
 NO_DEPENDENCIES = "прямые зависимости отсутствуют"
 INDENT = "  "
+IMAGE_SAVED = "изображение графа сохранено: "
+DIAGRAM_SAVED = "описание Mermaid сохранено: "
+SVG_SUFFIX = ".svg"
+MERMAID_SUFFIX = ".mmd"
 
 
 def main(argv=None):
@@ -40,6 +45,29 @@ def _run(config):
     cycles = graph_module.find_cycles(built)
     if cycles:
         print(format_cycles(cycles))
+    _visualize(config, built)
+
+
+def _visualize(config, built):
+    diagram = mermaid.render(built)
+    print(diagram)
+    _save(config.output, svg.render(built))
+    print(IMAGE_SAVED + config.output)
+    diagram_path = _diagram_path(config.output)
+    _save(diagram_path, diagram + "\n")
+    print(DIAGRAM_SAVED + diagram_path)
+
+
+def _diagram_path(output):
+    return output[:-len(SVG_SUFFIX)] + MERMAID_SUFFIX
+
+
+def _save(path, text):
+    try:
+        with open(path, "w", encoding="utf-8") as stream:
+            stream.write(text)
+    except OSError as error:
+        raise OutputError("не удалось сохранить файл: " + str(error))
 
 
 def _prepare(config):
