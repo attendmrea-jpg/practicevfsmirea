@@ -1,8 +1,8 @@
 import unittest
 
-from src.graph import build, find_cycles
+from src.graph import build, find_cycles, load_order
 from src.package import Package
-from src.report import format_cycles, format_graph
+from src.report import format_cycles, format_graph, format_order
 from src.sources import TestSource
 
 DEEP = {
@@ -81,6 +81,38 @@ class CycleTest(unittest.TestCase):
         self.assertEqual(find_cycles(graph_of(DEEP)), [])
 
 
+class LoadOrderTest(unittest.TestCase):
+    def labels(self, table, root="A"):
+        order, unresolved = load_order(graph_of(table, root))
+        return [node.label for node in order], unresolved
+
+    def test_leaves_come_first(self):
+        order, _ = self.labels(DEEP)
+        self.assertEqual(order[0], "G")
+
+    def test_root_comes_last(self):
+        order, _ = self.labels(DEEP)
+        self.assertEqual(order[-1], "A")
+
+    def test_dependency_precedes_dependent(self):
+        order, _ = self.labels(DEEP)
+        self.assertLess(order.index("D"), order.index("B"))
+
+    def test_every_node_is_ordered(self):
+        order, unresolved = self.labels(DEEP)
+        self.assertEqual(len(order), len(DEEP))
+        self.assertEqual(unresolved, [])
+
+    def test_single_package(self):
+        self.assertEqual(self.labels({"A": []})[0], ["A"])
+
+    def test_cycle_members_are_not_ordered(self):
+        order, unresolved = self.labels(INNER)
+        self.assertEqual(order, ["E"])
+        self.assertEqual([node.label for node in unresolved],
+                         ["A", "B", "C", "D"])
+
+
 class ReportTest(unittest.TestCase):
     def test_graph_title_counts_nodes_and_edges(self):
         text = format_graph(graph_of(DEEP))
@@ -96,6 +128,19 @@ class ReportTest(unittest.TestCase):
     def test_cycles_are_printed(self):
         text = format_cycles(find_cycles(graph_of(CYCLE)))
         self.assertIn("A -> B -> C -> A", text)
+
+    def test_order_is_numbered(self):
+        graph = graph_of(DEEP)
+        order, unresolved = load_order(graph)
+        text = format_order(graph, order, unresolved)
+        self.assertIn("1. G", text)
+        self.assertIn("7. A", text)
+
+    def test_unresolved_nodes_are_printed(self):
+        graph = graph_of(CYCLE)
+        order, unresolved = load_order(graph)
+        text = format_order(graph, order, unresolved)
+        self.assertIn("циклических", text)
 
 
 if __name__ == "__main__":

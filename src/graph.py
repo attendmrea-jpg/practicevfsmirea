@@ -90,3 +90,25 @@ def _unique(cycles):
             seen.add(key)
             found.append(cycle)
     return found
+
+
+def load_order(graph):
+    pending = {node: set(graph.children(node)) for node in graph.nodes}
+    order = []
+    ready = _ready(pending)
+    while ready:
+        order.extend(ready)
+        _remove(pending, ready)
+        ready = _ready(pending)
+    return order, sorted(pending)
+
+
+def _ready(pending):
+    return sorted(node for node, waited in pending.items() if not waited)
+
+
+def _remove(pending, ready):
+    for node in ready:
+        del pending[node]
+    for waited in pending.values():
+        waited.difference_update(ready)

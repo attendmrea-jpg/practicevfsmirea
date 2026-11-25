@@ -6,7 +6,7 @@ from src.config import build_config, format_config
 from src.errors import AppError, RegistryError
 from src.package import Package
 from src.registry import CratesIndex
-from src.report import format_cycles, format_graph
+from src.report import format_cycles, format_graph, format_order
 from src.sources import RegistrySource, TestSource, load_test_repository
 
 FAILURE_CODE = 1
@@ -32,6 +32,10 @@ def _run(config):
         _report_direct(source, root)
         return
     built = graph_module.build(source, root)
+    if config.order:
+        order, unresolved = graph_module.load_order(built)
+        print(format_order(built, order, unresolved))
+        return
     print(format_graph(built))
     cycles = graph_module.find_cycles(built)
     if cycles:

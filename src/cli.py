@@ -7,6 +7,7 @@ TEST_HELP = "режим работы с тестовым репозиторие�
 VERSION_HELP = "версия пакета"
 OUTPUT_HELP = "имя сгенерированного файла с изображением графа"
 DIRECT_HELP = "вывести только прямые зависимости пакета"
+ORDER_HELP = "вывести порядок загрузки зависимостей"
 DEFAULT_REPO_URL = "https://index.crates.io"
 DEFAULT_OUTPUT = "graph.svg"
 
@@ -28,5 +29,8 @@ def parse_args(argv=None):
     )
     parser.add_argument(
         "--direct", action="store_true", help=DIRECT_HELP,
+    )
+    parser.add_argument(
+        "--order", action="store_true", help=ORDER_HELP,
     )
     return parser.parse_args(argv)

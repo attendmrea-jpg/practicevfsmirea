@@ -22,6 +22,7 @@ class Config:
         self.version = args.version
         self.output = args.output
         self.direct = args.direct
+        self.order = args.order
 
     def items(self):
         return [
