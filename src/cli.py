@@ -6,6 +6,7 @@ REPO_HELP = "URL репозитория или путь к файлу тесто
 TEST_HELP = "режим работы с тестовым репозиторием"
 VERSION_HELP = "версия пакета"
 OUTPUT_HELP = "имя сгенерированного файла с изображением графа"
+DIRECT_HELP = "вывести только прямые зависимости пакета"
 DEFAULT_REPO_URL = "https://index.crates.io"
 DEFAULT_OUTPUT = "graph.svg"
 
@@ -24,5 +25,8 @@ def parse_args(argv=None):
     parser.add_argument("--version", help=VERSION_HELP)
     parser.add_argument(
         "--output", default=DEFAULT_OUTPUT, help=OUTPUT_HELP,
+    )
+    parser.add_argument(
+        "--direct", action="store_true", help=DIRECT_HELP,
     )
     return parser.parse_args(argv)

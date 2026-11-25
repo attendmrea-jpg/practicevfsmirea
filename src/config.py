@@ -21,6 +21,7 @@ class Config:
         self.test_mode = args.test_mode
         self.version = args.version
         self.output = args.output
+        self.direct = args.direct
 
     def items(self):
         return [
